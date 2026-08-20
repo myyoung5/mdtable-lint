@@ -26,7 +26,24 @@ func Lint(r io.Reader) ([]Finding, error) {
 
 	var findings []Finding
 	i := 0
+	var inFence bool
+	var fenceChar rune
+	var fenceLen int
 	for i < len(lines) {
+		if inFence {
+			if char, count, rest, ok := fenceMarker(lines[i]); ok && char == fenceChar && rest == "" && count >= fenceLen {
+				inFence = false
+			}
+			i++
+			continue
+		}
+		if char, count, _, ok := fenceMarker(lines[i]); ok {
+			inFence = true
+			fenceChar = char
+			fenceLen = count
+			i++
+			continue
+		}
 		if i+1 < len(lines) && hasUnescapedPipe(lines[i]) && isDelimiterRow(lines[i+1]) {
 			consumed, tableFindings := lintTable(lines, i)
 			findings = append(findings, tableFindings...)
@@ -36,6 +53,34 @@ func Lint(r io.Reader) ([]Finding, error) {
 		i++
 	}
 	return findings, nil
+}
+
+// fenceMarker reports whether line opens or closes a fenced code block, per
+// CommonMark: up to 3 leading spaces followed by a run of 3+ backticks or
+// tildes. rest is whatever follows that run (an info string for an opening
+// fence, or trailing whitespace for a closing one); the caller compares it
+// against the character and length that opened the fence.
+func fenceMarker(line string) (char rune, count int, rest string, ok bool) {
+	stripped := strings.TrimLeft(line, " ")
+	if len(line)-len(stripped) > 3 {
+		return 0, 0, "", false
+	}
+	if stripped == "" {
+		return 0, 0, "", false
+	}
+	char = rune(stripped[0])
+	if char != '`' && char != '~' {
+		return 0, 0, "", false
+	}
+	runeStripped := []rune(stripped)
+	for count < len(runeStripped) && runeStripped[count] == char {
+		count++
+	}
+	if count < 3 {
+		return 0, 0, "", false
+	}
+	rest = strings.TrimSpace(string(runeStripped[count:]))
+	return char, count, rest, true
 }
 
 // lintTable checks one table starting at header index i (0-based) and

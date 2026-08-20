@@ -37,11 +37,11 @@ an error reading input (missing file, etc).
 - each separator cell is dashes with an optional leading/trailing colon
   (`---`, `:---`, `---:`, `:---:`)
 - every data row has the same number of columns as the header
+- fenced code blocks (\`\`\` or `~~~`) are skipped, so a markdown example
+  containing pipes inside a fence isn't mistaken for a real table
 
 ## What it doesn't do yet
 
-- it doesn't skip fenced code blocks, so a markdown example inside a
-  \`\`\` block that happens to contain pipes will be linted as a real table
 - it doesn't understand inline code spans, so a cell containing an escaped
   pipe inside backticks (`` `a\|b` ``) can be split wrong
 - alignment consistency (e.g. warning if some rows clearly ignore the
