@@ -100,6 +100,49 @@ func TestFenceMarkerShortRunDoesNotCloseLongerFence(t *testing.T) {
 	}
 }
 
+func TestSplitRowIgnoresPipeInCodeSpan(t *testing.T) {
+	cells := splitRow("| `a|b` | c |")
+	if len(cells) != 2 {
+		t.Fatalf("expected 2 cells, got %v", cells)
+	}
+	if cells[0] != "`a|b`" {
+		t.Errorf("expected first cell to keep the code span intact, got %q", cells[0])
+	}
+	if cells[1] != "c" {
+		t.Errorf("expected second cell %q, got %q", "c", cells[1])
+	}
+}
+
+func TestSplitRowIgnoresEscapedPipeInCodeSpan(t *testing.T) {
+	cells := splitRow("| `a\\|b` | c |")
+	if len(cells) != 2 {
+		t.Fatalf("expected 2 cells, got %v", cells)
+	}
+	if cells[0] != "`a\\|b`" {
+		t.Errorf("expected first cell %q, got %q", "`a\\|b`", cells[0])
+	}
+}
+
+func TestSplitRowHandlesUnmatchedBacktickRun(t *testing.T) {
+	// A single backtick with no closing run of the same length never closes
+	// the code span, so every remaining pipe is swallowed as literal text.
+	cells := splitRow("| `a|b|c |")
+	if len(cells) != 1 {
+		t.Fatalf("expected 1 cell, got %v", cells)
+	}
+}
+
+func TestLintTableWithCodeSpanCellDoesNotMisreport(t *testing.T) {
+	input := "| a | b |\n| --- | --- |\n| `x|y` | 2 |\n"
+	findings, err := Lint(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings, got %v", findings)
+	}
+}
+
 func TestFenceMarkerRejectsIndentedFence(t *testing.T) {
 	if _, _, _, ok := fenceMarker("    ```"); ok {
 		t.Fatalf("expected a 4-space indented fence to not be recognized")

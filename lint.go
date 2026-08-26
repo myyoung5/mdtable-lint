@@ -146,56 +146,79 @@ func isDelimiterRow(line string) bool {
 	return true
 }
 
-// hasUnescapedPipe reports whether line contains a "|" that isn't preceded
-// by a backslash.
+// hasUnescapedPipe reports whether line contains a "|" that acts as a table
+// cell delimiter, i.e. one that isn't backslash-escaped and isn't inside an
+// inline code span.
 func hasUnescapedPipe(line string) bool {
 	if strings.TrimSpace(line) == "" {
 		return false
 	}
-	escaped := false
-	for _, r := range line {
-		if escaped {
-			escaped = false
-			continue
-		}
-		if r == '\\' {
-			escaped = true
-			continue
-		}
-		if r == '|' {
-			return true
-		}
-	}
-	return false
+	return len(tablePipes([]rune(line))) > 0
 }
 
 // splitRow splits a table row into trimmed cell contents, dropping the
-// optional leading and trailing pipe and honoring backslash-escaped pipes.
+// optional leading and trailing pipe and honoring backslash-escaped pipes
+// and pipes inside inline code spans (e.g. the pipe in `` `a\|b` `` is part
+// of the code span's literal text, not a cell separator).
 func splitRow(line string) []string {
 	trimmed := strings.TrimSpace(line)
 	trimmed = strings.TrimPrefix(trimmed, "|")
 	trimmed = strings.TrimSuffix(trimmed, "|")
 
+	runes := []rune(trimmed)
+	pipes := tablePipes(runes)
+
 	var cells []string
-	var current strings.Builder
+	start := 0
+	for _, p := range pipes {
+		cells = append(cells, strings.TrimSpace(string(runes[start:p])))
+		start = p + 1
+	}
+	cells = append(cells, strings.TrimSpace(string(runes[start:])))
+	return cells
+}
+
+// tablePipes returns the indices, into runes, of the pipes that act as cell
+// delimiters: neither backslash-escaped nor inside a run of backticks
+// forming an inline code span. A code span opened by a run of n backticks is
+// closed by the next run of exactly n backticks; until then its contents,
+// including any pipes or backslashes, are literal.
+func tablePipes(runes []rune) []int {
+	var pipes []int
 	escaped := false
-	for _, r := range trimmed {
+	codeSpanTicks := 0
+	for idx := 0; idx < len(runes); idx++ {
+		r := runes[idx]
+		if codeSpanTicks > 0 {
+			if r == '`' {
+				start := idx
+				for idx < len(runes) && runes[idx] == '`' {
+					idx++
+				}
+				if idx-start == codeSpanTicks {
+					codeSpanTicks = 0
+				}
+				idx--
+			}
+			continue
+		}
 		switch {
 		case escaped:
-			current.WriteRune(r)
 			escaped = false
 		case r == '\\':
-			current.WriteRune(r)
 			escaped = true
+		case r == '`':
+			start := idx
+			for idx < len(runes) && runes[idx] == '`' {
+				idx++
+			}
+			codeSpanTicks = idx - start
+			idx--
 		case r == '|':
-			cells = append(cells, strings.TrimSpace(current.String()))
-			current.Reset()
-		default:
-			current.WriteRune(r)
+			pipes = append(pipes, idx)
 		}
 	}
-	cells = append(cells, strings.TrimSpace(current.String()))
-	return cells
+	return pipes
 }
 
 func readLines(r io.Reader) ([]string, error) {

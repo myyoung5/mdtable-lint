@@ -39,11 +39,11 @@ an error reading input (missing file, etc).
 - every data row has the same number of columns as the header
 - fenced code blocks (\`\`\` or `~~~`) are skipped, so a markdown example
   containing pipes inside a fence isn't mistaken for a real table
+- pipes inside inline code spans (`` `a|b` ``) are treated as literal text,
+  not cell separators, so a cell like `` `a\|b` `` isn't split wrong
 
 ## What it doesn't do yet
 
-- it doesn't understand inline code spans, so a cell containing an escaped
-  pipe inside backticks (`` `a\|b` ``) can be split wrong
 - alignment consistency (e.g. warning if some rows clearly ignore the
   declared alignment) isn't checked
 
