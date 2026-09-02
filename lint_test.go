@@ -143,6 +143,21 @@ func TestLintTableWithCodeSpanCellDoesNotMisreport(t *testing.T) {
 	}
 }
 
+func TestIsDelimiterRowAcceptsMalformedCell(t *testing.T) {
+	// The row must still be recognized as an attempted separator so
+	// lintTable's stricter per-cell check gets a chance to report it;
+	// otherwise a typo like "==" makes the whole table invisible.
+	if !isDelimiterRow("| --- | == |") {
+		t.Fatal("expected row with a malformed separator cell to still be recognized as a delimiter row")
+	}
+}
+
+func TestIsDelimiterRowRejectsOrdinaryTextRow(t *testing.T) {
+	if isDelimiterRow("| foo | bar |") {
+		t.Fatal("expected a row of ordinary words not to be mistaken for a delimiter row")
+	}
+}
+
 func TestFenceMarkerRejectsIndentedFence(t *testing.T) {
 	if _, _, _, ok := fenceMarker("    ```"); ok {
 		t.Fatalf("expected a 4-space indented fence to not be recognized")

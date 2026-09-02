@@ -16,6 +16,13 @@ type Finding struct {
 
 var delimCellRe = regexp.MustCompile(`^:?-+:?$`)
 
+// delimCandidateRe matches a cell that could plausibly be someone's attempt
+// at a separator cell: no letters or digits, just punctuation. It's
+// deliberately looser than delimCellRe so that a typo like "==" still gets
+// the row recognized as a table (and reported via lintTable's stricter
+// check) instead of silently falling through as ordinary text.
+var delimCandidateRe = regexp.MustCompile(`^[^\p{L}\p{N}]+$`)
+
 // Lint reads markdown from r and returns every table problem it finds,
 // in the order the problems appear in the input.
 func Lint(r io.Reader) ([]Finding, error) {
@@ -128,8 +135,12 @@ func lintTable(lines []string, i int) (int, []Finding) {
 	return j - i, findings
 }
 
-// isDelimiterRow reports whether line is a valid GFM table separator row,
-// e.g. "| --- | :--- | ---: |".
+// isDelimiterRow reports whether line looks like an attempted table
+// separator row, e.g. "| --- | :--- | ---: |" or a malformed one like
+// "| --- | == |". It only rules out rows that clearly aren't a separator
+// (empty, or containing ordinary text) — cell-by-cell validity is lintTable's
+// job, so a malformed separator still gets the table recognized and reported
+// instead of being mistaken for prose and skipped.
 func isDelimiterRow(line string) bool {
 	if !hasUnescapedPipe(line) {
 		return false
@@ -139,7 +150,7 @@ func isDelimiterRow(line string) bool {
 		return false
 	}
 	for _, cell := range cells {
-		if !delimCellRe.MatchString(cell) {
+		if !delimCandidateRe.MatchString(cell) {
 			return false
 		}
 	}
