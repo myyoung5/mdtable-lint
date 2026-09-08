@@ -32,6 +32,19 @@ func Lint(r io.Reader) ([]Finding, error) {
 	}
 
 	var findings []Finding
+	scanTables(lines, func(lines []string, i int) int {
+		consumed, tableFindings := lintTable(lines, i)
+		findings = append(findings, tableFindings...)
+		return consumed
+	})
+	return findings, nil
+}
+
+// scanTables walks lines looking for pipe tables (a row with an unescaped
+// pipe immediately followed by a delimiter row), skipping fenced code
+// blocks, and invokes handle at each table's header line. handle returns
+// how many lines the table occupies so the scan can skip past it.
+func scanTables(lines []string, handle func(lines []string, headerIdx int) int) {
 	i := 0
 	var inFence bool
 	var fenceChar rune
@@ -52,14 +65,11 @@ func Lint(r io.Reader) ([]Finding, error) {
 			continue
 		}
 		if i+1 < len(lines) && hasUnescapedPipe(lines[i]) && isDelimiterRow(lines[i+1]) {
-			consumed, tableFindings := lintTable(lines, i)
-			findings = append(findings, tableFindings...)
-			i += consumed
+			i += handle(lines, i)
 			continue
 		}
 		i++
 	}
-	return findings, nil
 }
 
 // fenceMarker reports whether line opens or closes a fenced code block, per

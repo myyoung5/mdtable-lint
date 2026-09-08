@@ -31,6 +31,23 @@ stdin:7: invalid separator cell "==": must contain only dashes with optional lea
 Exit status is `0` if no findings, `1` if any findings were reported, `2` on
 an error reading input (missing file, etc).
 
+## Auto-fixing
+
+`--fix` corrects separator row problems in place: it pads or truncates the
+row to match the header's column count, and replaces any cell that isn't
+valid dash syntax with `---`. Alignment colons on cells that are already
+valid (`:---`, `---:`, `:---:`) are left alone.
+
+```
+$ mdtlint --fix docs/api.md
+docs/api.md:14: row has 4 columns, expected 3 (from header)
+```
+
+Data row column mismatches aren't auto-fixed — there's no reliable way to
+tell whether a row is missing a cell or has an extra one — so they're still
+reported after the fix runs. With no file arguments, `--fix` reads stdin and
+writes the corrected markdown to stdout instead of rewriting a file.
+
 ## What it checks today
 
 - separator row column count matches the header column count
