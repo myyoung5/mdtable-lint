@@ -31,6 +31,28 @@ stdin:7: invalid separator cell "==": must contain only dashes with optional lea
 Exit status is `0` if no findings, `1` if any findings were reported, `2` on
 an error reading input (missing file, etc).
 
+### JSON output
+
+Pass `--json` to get findings from all sources as a single JSON array on
+stdout, instead of one line of text per finding — useful for feeding results
+into an editor plugin:
+
+```
+$ mdtlint --json README.md docs/api.md
+[
+  {
+    "source": "docs/api.md",
+    "line": 14,
+    "message": "row has 4 columns, expected 3 (from header)"
+  }
+]
+```
+
+With no findings this prints `[]` rather than nothing, so the output is
+always valid JSON. `--json` combines with `--fix`: the file is still
+corrected in place (or, for stdin, the fixed markdown is written to stdout
+before the JSON array), and the array reports whatever findings remain.
+
 ## Auto-fixing
 
 `--fix` corrects separator row problems in place: it pads or truncates the
