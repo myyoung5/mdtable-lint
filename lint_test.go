@@ -152,6 +152,29 @@ func TestIsDelimiterRowAcceptsMalformedCell(t *testing.T) {
 	}
 }
 
+func TestIsDelimiterRowAcceptsEmptyCell(t *testing.T) {
+	// A separator cell left blank (someone forgot the dashes) must still be
+	// recognized as an attempted separator row, or the whole table -
+	// including any real column mismatches in its data rows - goes unreported.
+	if !isDelimiterRow("| --- |  |") {
+		t.Fatal("expected row with an empty separator cell to still be recognized as a delimiter row")
+	}
+}
+
+func TestLintReportsSeparatorRowWithEmptyCell(t *testing.T) {
+	input := "| a | b |\n| --- |  |\n| 1 | 2 |\n"
+	findings, err := Lint(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %v", findings)
+	}
+	if findings[0].Line != 2 {
+		t.Errorf("expected finding on line 2, got line %d", findings[0].Line)
+	}
+}
+
 func TestIsDelimiterRowRejectsOrdinaryTextRow(t *testing.T) {
 	if isDelimiterRow("| foo | bar |") {
 		t.Fatal("expected a row of ordinary words not to be mistaken for a delimiter row")

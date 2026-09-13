@@ -17,11 +17,12 @@ type Finding struct {
 var delimCellRe = regexp.MustCompile(`^:?-+:?$`)
 
 // delimCandidateRe matches a cell that could plausibly be someone's attempt
-// at a separator cell: no letters or digits, just punctuation. It's
-// deliberately looser than delimCellRe so that a typo like "==" still gets
-// the row recognized as a table (and reported via lintTable's stricter
-// check) instead of silently falling through as ordinary text.
-var delimCandidateRe = regexp.MustCompile(`^[^\p{L}\p{N}]+$`)
+// at a separator cell: no letters or digits, just punctuation (or nothing at
+// all). It's deliberately looser than delimCellRe so that a typo like "=="
+// or an accidentally empty cell still gets the row recognized as a table
+// (and reported via lintTable's stricter check) instead of silently falling
+// through as ordinary text.
+var delimCandidateRe = regexp.MustCompile(`^[^\p{L}\p{N}]*$`)
 
 // Lint reads markdown from r and returns every table problem it finds,
 // in the order the problems appear in the input.

@@ -79,6 +79,21 @@ func TestFixLeavesRowMismatchAsFinding(t *testing.T) {
 	}
 }
 
+func TestFixReplacesEmptySeparatorCell(t *testing.T) {
+	input := "| a | b |\n| --- |  |\n| 1 | 2 |\n"
+	got, findings, err := Fix(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Fix returned error: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("expected no remaining findings, got %v", findings)
+	}
+	want := "| a | b |\n| --- | --- |\n| 1 | 2 |\n"
+	if string(got) != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 func TestFixSkipsFencedCodeBlock(t *testing.T) {
 	input := "```\n| a | b | c |\n| --- | --- |\n```\n"
 	got, findings, err := Fix(strings.NewReader(input))
