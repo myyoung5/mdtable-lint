@@ -20,6 +20,7 @@ type sourceFinding struct {
 func main() {
 	fix := flag.Bool("fix", false, "auto-correct separator row problems in place")
 	jsonOut := flag.Bool("json", false, "report findings as a JSON array instead of plain text")
+	stdinName := flag.String("stdin-filename", "stdin", "path to report for stdin input, so editor integrations can tag findings with a real file")
 	flag.Parse()
 	args := flag.Args()
 
@@ -27,7 +28,7 @@ func main() {
 	dirty := false
 
 	if len(args) == 0 {
-		findings, code := runStdin(*fix)
+		findings, code := runStdin(*fix, *stdinName)
 		if code == 2 {
 			os.Exit(2)
 		}
@@ -58,8 +59,10 @@ func main() {
 
 // runStdin lints or fixes stdin, returning its findings and an exit code of
 // 2 if reading failed. In fix mode the corrected content is written to
-// stdout; there's no file to rewrite in place.
-func runStdin(fix bool) ([]sourceFinding, int) {
+// stdout; there's no file to rewrite in place. Findings are tagged with name
+// instead of the literal "stdin" so editor integrations can report them
+// against the buffer's real path.
+func runStdin(fix bool, name string) ([]sourceFinding, int) {
 	if fix {
 		fixed, findings, err := Fix(os.Stdin)
 		if err != nil {
@@ -67,7 +70,7 @@ func runStdin(fix bool) ([]sourceFinding, int) {
 			return nil, 2
 		}
 		os.Stdout.Write(fixed)
-		return tagFindings("stdin", findings), 0
+		return tagFindings(name, findings), 0
 	}
 
 	findings, err := Lint(os.Stdin)
@@ -75,7 +78,7 @@ func runStdin(fix bool) ([]sourceFinding, int) {
 		fmt.Fprintln(os.Stderr, "mdtlint:", err)
 		return nil, 2
 	}
-	return tagFindings("stdin", findings), 0
+	return tagFindings(name, findings), 0
 }
 
 // runFile lints or fixes the file at path, rewriting it in place in fix

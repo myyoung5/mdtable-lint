@@ -31,6 +31,22 @@ stdin:7: invalid separator cell "==": must contain only dashes with optional lea
 Exit status is `0` if no findings, `1` if any findings were reported, `2` on
 an error reading input (missing file, etc).
 
+Stdin findings are tagged with the literal source name `stdin` by default.
+Editor integrations that pipe a buffer's contents in (rather than passing a
+file argument) can pass `--stdin-filename` to have findings tagged with the
+buffer's real path instead:
+
+```
+$ cat notes.md | mdtlint --json --stdin-filename notes.md
+[
+  {
+    "source": "notes.md",
+    "line": 7,
+    "message": "invalid separator cell \"==\": must contain only dashes with optional leading/trailing colon"
+  }
+]
+```
+
 ### JSON output
 
 Pass `--json` to get findings from all sources as a single JSON array on
