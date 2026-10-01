@@ -97,10 +97,14 @@ writes the corrected markdown to stdout instead of rewriting a file.
 - pipes inside inline code spans (`` `a|b` ``) are treated as literal text,
   not cell separators, so a cell like `` `a\|b` `` isn't split wrong
 
+- in a table where some column declares an alignment (any colon in the
+  separator), a column whose data cells are all numbers but which declares
+  none is reported. Tables with no alignment colons at all are not checked.
+
 ## What it doesn't do yet
 
-- alignment consistency (e.g. warning if some rows clearly ignore the
-  declared alignment) isn't checked
+- alignment is only checked for numeric columns; text columns and
+  right-aligned columns containing non-numbers aren't looked at
 
 ## Building
 

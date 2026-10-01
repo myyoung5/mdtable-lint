@@ -62,6 +62,7 @@ func fixTable(lines []string, i int) (int, []Finding) {
 		lines[delimLine] = "| " + strings.Join(delimCells, " | ") + " |"
 	}
 
+	var rows [][]string
 	j := i + 2
 	for j < len(lines) && hasUnescapedPipe(lines[j]) {
 		rowCells := splitRow(lines[j])
@@ -72,9 +73,15 @@ func fixTable(lines []string, i int) (int, []Finding) {
 					"row has %d columns, expected %d (from header)",
 					len(rowCells), len(headerCells)),
 			})
+		} else {
+			rows = append(rows, rowCells)
 		}
 		j++
 	}
+
+	// delimCells now matches the header width, and any cell that was invalid
+	// has become "---", so the alignment check sees the repaired separator.
+	findings = append(findings, checkAlignment(delimLine+1, headerCells, delimCells, rows)...)
 
 	return j - i, findings
 }

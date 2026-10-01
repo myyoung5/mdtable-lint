@@ -181,6 +181,42 @@ func TestIsDelimiterRowRejectsOrdinaryTextRow(t *testing.T) {
 	}
 }
 
+func TestLintFlagsUnalignedNumericColumn(t *testing.T) {
+	input := "| name | qty | price |\n| :--- | --- | ---: |\n| a | 1 | 2.50 |\n| b | 12 | 10.00 |\n"
+	findings, err := Lint(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %v", findings)
+	}
+	if findings[0].Line != 2 {
+		t.Errorf("expected finding on line 2, got line %d", findings[0].Line)
+	}
+}
+
+func TestLintIgnoresNumericColumnWhenNoAlignmentDeclared(t *testing.T) {
+	input := "| name | qty |\n| --- | --- |\n| a | 1 |\n"
+	findings, err := Lint(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings, got %v", findings)
+	}
+}
+
+func TestLintIgnoresMixedColumnWhenAlignmentDeclared(t *testing.T) {
+	input := "| name | qty |\n| :--- | --- |\n| a | 1 |\n| b | n/a |\n"
+	findings, err := Lint(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings, got %v", findings)
+	}
+}
+
 func TestFenceMarkerRejectsIndentedFence(t *testing.T) {
 	if _, _, _, ok := fenceMarker("    ```"); ok {
 		t.Fatalf("expected a 4-space indented fence to not be recognized")

@@ -129,6 +129,7 @@ func lintTable(lines []string, i int) (int, []Finding) {
 		}
 	}
 
+	var rows [][]string
 	j := i + 2
 	for j < len(lines) && hasUnescapedPipe(lines[j]) {
 		rowCells := splitRow(lines[j])
@@ -139,11 +140,65 @@ func lintTable(lines []string, i int) (int, []Finding) {
 					"row has %d columns, expected %d (from header)",
 					len(rowCells), len(headerCells)),
 			})
+		} else {
+			rows = append(rows, rowCells)
 		}
 		j++
 	}
 
+	if len(delimCells) == len(headerCells) {
+		findings = append(findings, checkAlignment(delimLine+1, headerCells, delimCells, rows)...)
+	}
+
 	return j - i, findings
+}
+
+var numericCellRe = regexp.MustCompile(`^[+-]?\d[\d,]*(\.\d+)?%?$`)
+
+// checkAlignment flags columns that hold only numbers but declare no
+// alignment, in a table where at least one other column does declare one.
+// A table with no colons anywhere is left alone: the author hasn't opted into
+// alignment, and flagging every numeric column would be noise. Once they have,
+// a numeric column that was skipped is almost always an oversight. Only
+// well-formed separator cells count as declaring alignment, and rows whose
+// column count is wrong are excluded since their cells don't line up.
+func checkAlignment(delimLineNo int, headerCells, delimCells []string, rows [][]string) []Finding {
+	if len(rows) == 0 {
+		return nil
+	}
+	declared := false
+	for _, cell := range delimCells {
+		if delimCellRe.MatchString(cell) && (strings.HasPrefix(cell, ":") || strings.HasSuffix(cell, ":")) {
+			declared = true
+			break
+		}
+	}
+	if !declared {
+		return nil
+	}
+
+	var findings []Finding
+	for col, cell := range delimCells {
+		if !delimCellRe.MatchString(cell) || strings.HasPrefix(cell, ":") || strings.HasSuffix(cell, ":") {
+			continue
+		}
+		numeric := true
+		for _, row := range rows {
+			if !numericCellRe.MatchString(row[col]) {
+				numeric = false
+				break
+			}
+		}
+		if numeric {
+			findings = append(findings, Finding{
+				Line: delimLineNo,
+				Message: fmt.Sprintf(
+					"column %d (%q) holds only numbers but has no alignment; other columns declare one",
+					col+1, headerCells[col]),
+			})
+		}
+	}
+	return findings
 }
 
 // isDelimiterRow reports whether line looks like an attempted table
